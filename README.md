@@ -1,166 +1,128 @@
-# Filtering
-Smart Table is only on charge of the actual row filtering based on the provided configuration. 
-The visual aspect of it are in your control, allowing you to use any UI Elements to interact while it frees you
-from the actual filtering computation.
+# Pagination
 
-## Filters <Badge text="Property"/> <Badge text="filters: Object"/>
-To enable filtering you need to provide the `filters` property on the `v-table` component.
+Vue Smart Table supports client side pagination. 
+To enable it, you need to provide the `pageSize` and `currentPage` properties on the `v-table` Component.
 
-The `filters` configuration object has the following form:
+## Page Size  <Badge text="Property"/> <Badge text="pageSize: Number"/>
+The `pageSize` property specify the amount of items each page should contain. 
+If this property is present, client side pagination will be enabled.
 
-```js
-{
-  name: {value: '', keys: ['name']}
-}
-```
+## Current Page <Badge text="Property"/> <Badge text="currentPage: Number"/>  <Badge text="Sync"/>
+The `currentPage` property indicates the current active page. 
+This property should be bound with a `sync` modifier, since the `v-table` itself 
+may update its value, e.g. if a new filter is applied and the amount of available items decreases 
+so the current active page is no longer valid.
+::: tip
+The `currentPage` property index starts at `1`, 
+this is to avoid confusion since visually the page links start at `1` not `0`.
+:::
 
-The entry Key is just for you, so you can reference any of the filters by its name. 
-It is the entry Value Object what Smart Table will use to perform the filtering.
+## Total pages  <Badge text="Event"/> <Badge text="totalPagesChanged: Number"/>
+The total amount of pages is calculated using the Total Items and the Page Size. 
+As the Total Items changes the Total Pages will also change and a `totalPagesChanged` event 
+will be emitted with the new amount as its payload.
 
-### value <Badge text="String" type="success"/>
-This String is the value of the filter, you would normally bind it to the `v-model` of an input element. As you type,
-the rows will be filtered.
+## Total Items  <Badge text="Event"/> <Badge text="totalItemsChanged: Number"/>
+The total amount of items changes as the Filters change. When it changes `v-table` will emit a `totalItemsChanged` Event.
+This event will also be emitted when the `v-table` mounts so it will have the right amount from the start.
 
-Keep in mind that an empty `value` means there is no filter.
+## Pagination Controls
+The pagination controls are handled outside of `v-table`, you can use whatever you want to control it, but we provide
+a `SmartPagination` component so you can have it working out of the box.
 
-### keys <Badge text="Array" type="success"/>
-This is an Array of Strings indicating what fields of each row the filter `value` will apply to.
+The component requires the following properties:
 
-You must provide at least one key. If more than one key is provided as long as one of the row fields matches the filter,
-the row will be displayed.
+### Current Page <Badge text="Property"/> <Badge text="currentPage: Number"/>  <Badge text="Sync"/>
+This should be the same `currentPage` property used for the `v-table` component 
+and it should also use the `sync` modifier, that way whenever either of them changes it the other one will be notified.
 
-#### Example
-```js
-import users from './users.json'
+### Total Pages <Badge text="Property"/> <Badge text="totalPages: Number"/>
+The `v-table` component emits a `totalPagesChanged` event, when the event happens we should save the event payload and
+use it for the `totalPages` property on the `SmartPagination` component.
 
-export default {
-  name: 'BasicFiltering',
-  data: () => ({
-    users,
-    filters: {
-      name: { value: '', keys: ['name'] }
-    }
-  })
-}
-```
-
+## Example
 ```html
 <template>
     <div>
-      <label>Filter by Name:</label>
-      <input class="form-control" v-model="filters.name.value"/>
-    
       <v-table
         :data="users"
-        :filters="filters"
+        :currentPage.sync="currentPage"
+        :pageSize="5"
+        @totalPagesChanged="totalPages = $event"
       >
         <thead slot="head">
-        <th>Name</th>
-        <th>Age</th>
-        <th>Email</th>
-        <th>Address</th>
+          <th>Name</th>
+          <th>Age</th>
+          <th>State</th>
+          <th>Registered</th>
         </thead>
         <tbody slot="body" slot-scope="{displayData}">
         <tr v-for="row in displayData" :key="row.guid">
           <td>{{ row.name }}</td>
           <td>{{ row.age }}</td>
-          <td>{{ row.email }}</td>
-          <td>
-              {{ row.address.street }}, 
-              {{ row.address.city }} 
-              {{ row.address.state}}
-          </td>
+          <td>{{ row.address.state }}</td>
+          <td>{{ row.registered }}</td>
         </tr>
         </tbody>
       </v-table>
+    
+      <smart-pagination
+        :currentPage.sync="currentPage"
+        :totalPages="totalPages"
+      />
     </div>
 </template>
 ```
 
-<BasicFiltering/>
-
-## Custom Filters
-You also have the option to provide a custom filter for more complex situations. 
-A Custom Filter is a function with two arguments: `filterValue` and `row`.
-It should return `true` if the row should be displayed and `false` otherwise.
-
-### custom <Badge text="Function" type="success"/>
-To use a custom filter provide the filtering function on the `custom` property on the filter configuration object:
-
-### value <Badge text="Any" type="success"/>
-With custom filtering the `value` property is not limited to Strings, you can provide anything as the `value`, 
-it will just get passed along to your custom function.
-
-#### Example
 ```js
 <script>
 import users from './users.json'
 
 export default {
-  name: 'CustomFiltering',
-  data () {
-    return {
-      users,
-      filters: {
-        age: { value: { min: 21, max: 22 }, custom: this.ageFilter }
-      }
-    }
-  },
-  methods: {
-    ageFilter (filterValue, row) {
-      return row.age >= filterValue.min && row.age <= filterValue.max
-    }
-  }
+  name: 'Pagination',
+  data: () => ({
+    users,
+    currentPage: 1,
+    totalPages: 0
+  })
 }
 </script>
 ```
+<Pagination/>
 
+## Customizing Smart Pagination
+Besides the `currentPage` and `totalPages` properties, there are many others used to configure the behaviour and look
+and feel of the pagination controls.
+
+### Hide Single Page <Badge text="Property"/> <Badge text="hideSinglePage: Boolean"/> <Badge text="default: true"/>
+Determines whether or not we show the pagination controls when there is only a single page.
+
+### Max Page Links <Badge text="Property"/> <Badge text="maxPageLinks: Number"/>
+By default we will show every single page link, but you can use the `maxPageLinks` property to limit the amount of visible links.
+
+### Boundary Links <Badge text="Property"/> <Badge text="boundaryLinks: Boolean"/> <Badge text="default: false"/>
+Determines whether or not we should show two links to navigate to the First and Last page.
+
+### First Text <Badge text="Property"/> <Badge text="firstText: String"/> <Badge text="default: First"/>
+Specify the text for the First Page link.
+
+### Last Text <Badge text="Property"/> <Badge text="lastText: String"/> <Badge text="default: Last"/>
+Specify the text for the Last Page link.
+
+### Direction Links <Badge text="Property"/> <Badge text="hideSinglePage: Boolean"/> <Badge text="default: true"/>
+Determines whether or not we should have direction links to navigate back and forth between pages.
+
+### CSS Customization
+The HTML structure for the Smart Pagination component is as follows:
 ```html
-<template>
-    <div>
-      <label>Min Age:</label>
-    
-      <InputSpinner
-        v-model="filters.age.value.min"
-        :min="0"
-        :max="filters.age.value.max"
-      />
-    
-      <label>Max Age:</label>
-      <InputSpinner
-        v-model="filters.age.value.max"
-        :min="filters.age.value.min"
-        :max="99"
-      />
-    
-      <v-table
-        :data="users"
-        :filters="filters"
-      >
-        <thead slot="head">
-        <th>Name</th>
-        <th>Age</th>
-        <th>Email</th>
-        <th>Address</th>
-        </thead>
-        <tbody slot="body" slot-scope="{displayData}">
-        <tr v-for="row in displayData" :key="row.guid">
-          <td>{{ row.name }}</td>
-          <td>{{ row.age }}</td>
-          <td>{{ row.email }}</td>
-          <td>
-            {{ row.address.street }},
-            {{ row.address.city }}
-            {{ row.address.state}}
-          </td>
-        </tr>
-        </tbody>
-      </v-table>
-    </div>
-</template>
+<nav class="smart-pagination">
+    <ul class="pagination">
+       <li class="page-item">
+         <a class="page-link">1</a>
+         <a class="page-link">2</a>
+         <a class="page-link">3</a>
+       </li>
+    </ul>
+</nav>
 ```
-::: tip
-Please think of the `InputSpinner` as a fancy `Input` with validation. The important bit is its `v-model`.
-:::
-
-<CustomFiltering/>
+This structure is compatible with Bootstrap's Pagination. But you can easily customize it with your own Styles.
